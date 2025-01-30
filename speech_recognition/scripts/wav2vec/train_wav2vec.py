@@ -1,4 +1,33 @@
-# SpeechRecognition/scripts/wav2vec/train_wa2vec.py
+"""
+===============================================================================
+    Project:        JarvisAI Bachelorthesis
+    File:           dataset.py
+    Description:    This script contains the wav2vec2-model 1.0 and 2.0
+                    training process with all necessary 
+                    functions for dataset loading and pre-processing,
+                    as well as all checkpoint definitions, saving functions
+    Author:         Carlo Berger, Aalen University
+    Email:          Carlo.Berger@studmail.htw-aalen.de
+    Created:        2024-11-15
+    Last Modified:  2025-01-30
+    Version:        6.0
+===============================================================================
+
+    Copyright (c) 2025 Carlo Berger
+
+    This software is provided "as is", without warranty of any kind, express
+    or implied, including but not limited to the warranties of merchantability,
+    fitness for a particular purpose, and non-infringement. In no event shall
+    the authors or copyright holders be liable for any claim, damages, or other
+    liability, whether in an action of contract, tort, or otherwise, arising
+    from, out of, or in connection with the software or the use or other dealings
+    in the software.
+
+    All code is licenced under the opensource License. You may not use this file except
+    in compliance with the License.
+
+===============================================================================
+"""
 
 ### imports
 # general imports
@@ -28,20 +57,21 @@ from torch.utils.data import Dataset
 import pytorch_lightning as pl
 import random
 from torch.utils.data import DataLoader
-from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
+from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor
 
 
 # Logging
 # from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.loggers import CSVLogger
 from pytorch_lightning.loggers import WandbLogger
+import wandb
 
 from config import MODEL_ID, OUTPUT_DIR, BATCH_SIZE, LEARNING_RATE, MAX_STEPS, WARMUP_STEPS, EVAL_STEPS, SAVE_STEPS, MAX_EPOCHS, DEVICE, processor, encode, decode
 
 
 def prep_dataset():
     # load dataset
-    minds = load_dataset("PolyAI/minds14", name="en-US", split="train[:1000]").train_test_split(test_size=0.2)
+    minds = load_dataset("PolyAI/minds14", name="en-US", split="train").train_test_split(test_size=0.2)
     
     # Remove unwanted columns but keep "transcription"
     minds = minds.remove_columns(["english_transcription", "intent_class", "lang_id"])
@@ -81,16 +111,17 @@ def prep_batch(batch):
 
 
 # Initialize the Speech Recognition model using PyTorch Lightning
-model = SpeechRecognition.load_from_checkpoint('/home/tuancuong/workspaces/carloberger/speech_recognition/scripts/checkpoints/model_epoch=3-val_loss=0.31.ckpt', LEARNING_RATE=LEARNING_RATE)
+model = SpeechRecognition(
+    LEARNING_RATE=LEARNING_RATE,
+    )
+
+# resume training
+# model = SpeechRecognition.load_from_checkpoint('/home/tuancuong/workspaces/carloberger/speech_recognition/scripts/checkpoints/model_epoch=3-val_loss=0.31.ckpt', LEARNING_RATE=LEARNING_RATE)
+# model = SpeechRecognition.load_from_checkpoint('speech_recognition/scripts/checkpoints/model_epoch=16-val_loss=0.35.ckpt', LEARNING_RATE=LEARNING_RATE)
+model.model.freeze_feature_encoder()
 
 # Logging
-# TensorBoard
-# logger = TensorBoardLogger("speech_recognition/scripts/", name="lightning_logs")
-# CSV Logger
-csv_logger = CSVLogger("speech_recognition/scripts/", name="lightning_logs")
-# Wandb Logger
-wandb_logger = WandbLogger(project='Bachelor_Thesis_Berger', name='MozillaCommonVoiceFull', log_model='all')
-wandb_logger.experiment.config["batch_size"] = BATCH_SIZE
+wandb.init(project='Bachelor_Thesis_Berger', name="Minds14Dataset-finetuning-nowarmup-fullbatch")
 
 
 
@@ -151,6 +182,7 @@ def get_dataloaders(use_wav2vec_processor=True):
         # train_dataset = SpeechDataset(feature_dir, transcription_file, apply_specaugment=True, num_samples_per_epoch=196608)
         train_dataset = SpeechDataset(feature_dir, transcription_file)
         val_dataset = SpeechDataset(test_feature_dir, test_transcription_file)
+        # train_dataset = val_dataset
 
         # Load dataclass from modelfile
         collator = DataCollatorCTCWithPadding(processor)
@@ -158,7 +190,7 @@ def get_dataloaders(use_wav2vec_processor=True):
 
         train_loader = DataLoader(
             train_dataset,
-            batch_size=4*BATCH_SIZE,
+            batch_size=2*BATCH_SIZE,
             shuffle=True,
             collate_fn=collator,
             num_workers=4,
@@ -219,7 +251,7 @@ def train_model():
         monitor='val_wer',
         mode='min',
         save_top_k=1,
-        filename='model_{epoch}-{val_loss:.2f}',
+        filename='model_{epoch}-{val_wer:.2f}',
     )
     # Initialize EarlyStopping callback
     early_stopping_callback = EarlyStopping(
@@ -228,6 +260,9 @@ def train_model():
         mode='min',
         verbose=True
     )
+
+    lr_monitor = LearningRateMonitor(logging_interval='step')
+
 
     # Dynamically set the device and accelerator based on GPU availability
     if torch.cuda.is_available():
@@ -239,18 +274,20 @@ def train_model():
 
     # Set up PyTorch Lightning Trainer
     trainer = pl.Trainer(
-        callbacks=[checkpoint_callback, early_stopping_callback],
-        devices=[1],
+        callbacks=[checkpoint_callback, early_stopping_callback, lr_monitor],
+        devices=[2],
         max_epochs=MAX_EPOCHS,
-        accumulate_grad_batches=2,
+        # accumulate_grad_batches=2,
         accelerator=accelerator,
         log_every_n_steps=1,  # Log frequently enough but not overly granular
         check_val_every_n_epoch=1,  # Validate at the end of each epoch
-        gradient_clip_val=0.3,
-        gradient_clip_algorithm="norm",
+        limit_train_batches=0.1,  # Limit the number of training batches
+        
+        # gradient_clip_val=0.3,
+        # gradient_clip_algorithm="norm",
         enable_progress_bar=True,
-        logger=wandb_logger,
-        fast_dev_run=False
+        logger=WandbLogger(),
+        fast_dev_run=False,
     )
 
     # Train the model
@@ -268,3 +305,4 @@ def train_model():
 if __name__ == "__main__":
     torch.cuda.empty_cache()
     train_model()
+    wandb.finish()

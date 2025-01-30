@@ -1,3 +1,32 @@
+"""
+===============================================================================
+    Project:        JarvisAI Bachelorthesis
+    File:           prepare_mp3.py
+    Description:    This script loads the dataset, transforms it into .wav format
+                    and resamples data to 16 kHz as well as aligns the transcriptions 
+    Author:         Carlo Berger, Aalen University
+    Email:          Carlo.Berger@studmail.htw-aalen.de
+    Created:        2024-11-15
+    Last Modified:  2025-01-30
+    Version:        2.0
+===============================================================================
+
+    Copyright (c) 2025 Carlo Berger
+
+    This software is provided "as is", without warranty of any kind, express
+    or implied, including but not limited to the warranties of merchantability,
+    fitness for a particular purpose, and non-infringement. In no event shall
+    the authors or copyright holders be liable for any claim, damages, or other
+    liability, whether in an action of contract, tort, or otherwise, arising
+    from, out of, or in connection with the software or the use or other dealings
+    in the software.
+
+    All code is licenced under the opensource License. You may not use this file except
+    in compliance with the License.
+
+===============================================================================
+"""
+
 import os
 import csv
 from utils import load_audio, find_files
@@ -54,7 +83,7 @@ with open(transcription_output_path, 'w', encoding='utf-8') as transcription_fil
             print(f"Loading audio file: {audio_file}")  # Debug: File being loaded
             waveform, sample_rate = load_audio(audio_file)
 
-            # Resample to 16kHz if necessary
+            # Resample to 16kHz (checks if necessary)
             if sample_rate != 16000:
                 print(f"Resampling {audio_file} from {sample_rate} Hz to 16kHz")  # Debug: Resampling info
                 resampler = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=16000)

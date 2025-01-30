@@ -1,3 +1,31 @@
+"""
+===============================================================================
+    Project:        JarvisAI Bachelorthesis
+    File:           read_checkpoints.py
+    Description:    This script manually overwrites model parameters and saves best model 
+    Author:         Carlo Berger, Aalen University
+    Email:          Carlo.Berger@studmail.htw-aalen.de
+    Created:        2024-11-15
+    Last Modified:  2025-01-30
+    Version:        2.0
+===============================================================================
+
+    Copyright (c) 2025 Carlo Berger
+
+    This software is provided "as is", without warranty of any kind, express
+    or implied, including but not limited to the warranties of merchantability,
+    fitness for a particular purpose, and non-infringement. In no event shall
+    the authors or copyright holders be liable for any claim, damages, or other
+    liability, whether in an action of contract, tort, or otherwise, arising
+    from, out of, or in connection with the software or the use or other dealings
+    in the software.
+
+    All code is licenced under the opensource License. You may not use this file except
+    in compliance with the License.
+
+===============================================================================
+"""
+
 import pytorch_lightning as pl
 import torch
 import os
@@ -75,6 +103,6 @@ def read_all_checkpoints(checkpoint_dir, num_classes):
         read_checkpoint_parameters(checkpoint_path, num_classes)
 
 if __name__ == '__main__':
-    NUM_CLASSES = 29  # Update if needed
+    NUM_CLASSES = 29  
     read_all_checkpoints(CHECKPOINT_DIR, NUM_CLASSES)
     print(f"Checkpoint information has been written to {OUTPUT_FILE}")

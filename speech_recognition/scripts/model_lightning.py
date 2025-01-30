@@ -1,3 +1,33 @@
+"""
+===============================================================================
+    Project:        JarvisAI Bachelorthesis
+    File:           model_lightning.py
+    Description:    This script contains Mel-Spectrogram-model 2.0 which was 
+                    enhanced through PyTorch Lightning module,
+                    for the model and the model training
+    Author:         Carlo Berger, Aalen University
+    Email:          Carlo.Berger@studmail.htw-aalen.de
+    Created:        2024-11-15
+    Last Modified:  2025-01-30
+    Version:        2.0
+===============================================================================
+
+    Copyright (c) 2025 Carlo Berger
+
+    This software is provided "as is", without warranty of any kind, express
+    or implied, including but not limited to the warranties of merchantability,
+    fitness for a particular purpose, and non-infringement. In no event shall
+    the authors or copyright holders be liable for any claim, damages, or other
+    liability, whether in an action of contract, tort, or otherwise, arising
+    from, out of, or in connection with the software or the use or other dealings
+    in the software.
+
+    All code is licenced under the opensource License. You may not use this file except
+    in compliance with the License.
+
+===============================================================================
+"""
+
 from pytorch_lightning.utilities.types import TRAIN_DATALOADERS
 from model import SpeechRecognitionModel
 from data import SpeechDataset, custom_collate, vocab
@@ -10,13 +40,21 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.optim.lr_scheduler import CyclicLR
 
 # Hyperparameters
-# Define Hyperparameters
 EPOCHS = 100
-LEARNING_RATE = 0.0002 # Adam learning rate 0,001 
+LEARNING_RATE = 0.0002 # Adam optimizer typical learning rate 0,001 
 NUM_CLASSES = len(vocab) # total of 29: 26 Letters + Blank <sp> (Leerzeichen), Apostroph ', End of Sentence
 WEIGHT_DECAY=1e-4
 
-# pytorch_lightning model for aboved defined model
+# Definition of specific seed for all computing instances
+SEED = 42
+random.seed(SEED)
+torch.manual_seed(SEED)
+torch.cuda.manual_seed(SEED)
+torch.cuda.manual_seed_all(SEED)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+
+# pytorch_lightning model for in model.py defined model
 class LitSpeechRecognitionModel(pl.LightningModule):
     def __init__(self, num_classes, criterion):
         super().__init__()
@@ -91,15 +129,6 @@ class LitSpeechRecognitionModel(pl.LightningModule):
 
 # train with trainer class
 def train():
-    # Definition of specific seed for all computing instances
-    SEED = 42
-    random.seed(SEED)
-    torch.manual_seed(SEED)
-    torch.cuda.manual_seed(SEED)
-    torch.cuda.manual_seed_all(SEED)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-
     # Initialization of a new Model
     model = LitSpeechRecognitionModel(num_classes=NUM_CLASSES, criterion=nn.CTCLoss(blank=NUM_CLASSES - 1))
 

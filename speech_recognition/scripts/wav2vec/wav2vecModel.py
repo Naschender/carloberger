@@ -1,9 +1,33 @@
-# SpeechRecognition/scripts/wav2vec/wav2vecModel.py
-# author: carlo berger
-# Topic: Speech Recognition Model in context of Bachelorthesis WS25
-#        this model transforms raw audio in waveform format into vector format
-#        the vector format then gets used for predicting the best path through calculation matrix
+"""
+===============================================================================
+    Project:        JarvisAI Bachelorthesis
+    File:           dataset.py
+    Description:    This script contains the wav2vec2-model 1.0 now 2.0 which is the
+                    Speech Recognition Model in context of Bachelorthesis WS25
+                    this model transforms raw audio in waveform format into vector format
+                    the vector format then gets used for predicting the best path through calculation matrix
+    Author:         Carlo Berger, Aalen University
+    Email:          Carlo.Berger@studmail.htw-aalen.de
+    Created:        2024-11-15
+    Last Modified:  2025-01-30
+    Version:        4.0
+===============================================================================
 
+    Copyright (c) 2025 Carlo Berger
+
+    This software is provided "as is", without warranty of any kind, express
+    or implied, including but not limited to the warranties of merchantability,
+    fitness for a particular purpose, and non-infringement. In no event shall
+    the authors or copyright holders be liable for any claim, damages, or other
+    liability, whether in an action of contract, tort, or otherwise, arising
+    from, out of, or in connection with the software or the use or other dealings
+    in the software.
+
+    All code is licenced under the opensource License. You may not use this file except
+    in compliance with the License.
+
+===============================================================================
+"""
 ### imports
 # general
 import torch
@@ -15,7 +39,7 @@ import soundfile as sf
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 # from files
-from transformers import Wav2Vec2Processor, Wav2Vec2ForCTC
+from transformers import Wav2Vec2Processor, Wav2Vec2ForCTC, get_scheduler
 from dataclasses import dataclass
 from typing import Dict, List, Union
 from dataset import SpeechDataset, DataCollatorCTCWithPadding
@@ -45,6 +69,7 @@ class SpeechRecognition(pl.LightningModule):
         super().__init__()
         self.processor = processor
         self.model = Wav2Vec2ForCTC.from_pretrained(MODEL_ID).to(DEVICE)
+        self.model.freeze_feature_encoder()
         self.learning_rate = LEARNING_RATE
         self.validation_outputs = {"preds": [], "labels": []}
         self.ctc_loss_fn = nn.CTCLoss(blank=self.processor.tokenizer.pad_token_id, reduction="mean", zero_infinity=True)
@@ -151,28 +176,12 @@ class SpeechRecognition(pl.LightningModule):
             
             # Ensure preds and labels match in size before accumulating
             assert preds.shape[0] == labels.shape[0], "Mismatch in batch sizes of predictions and labels"
-    
-            # Truncate predictions to target lengths
-            # Use min to ensure truncation does not go out of bounds
-            preds_trimmed = [
-                pred[:min(target_lengths[i], pred.shape[0])] for i, pred in enumerate(preds)
-            ]
 
+            decoded_predictions = self.processor.batch_decode(preds)
 
-            # Decode predictions and labels
-            decoded_predictions = [
-                self.processor.batch_decode([pred.tolist()], skip_special_tokens=True)[0]
-                for pred in preds_trimmed
-            ]
-
-            decoded_labels = []
-            for label in labels.tolist():
-                cleaned_label = [id for id in label if id != -100]
-                decoded_labels.append(decode(cleaned_label))
-            
-            # Debugging decoded outputs
-            print(f"Decoded Predictions: {decoded_predictions[:5]}")
-            print(f"Decoded Labels: {decoded_labels[:5]}")
+            # Replace -100 with the tokenizer.pad_token_id
+            labels[labels == -100] = self.processor.tokenizer.pad_token_id
+            decoded_labels = self.processor.batch_decode(labels, group_tokens =False)
 
             # Debugging mismatches
             if len(decoded_predictions) != len(decoded_labels):
@@ -182,10 +191,6 @@ class SpeechRecognition(pl.LightningModule):
             # Add to validation outputs
             self.validation_outputs["preds"].extend(decoded_predictions)
             self.validation_outputs["labels"].extend(decoded_labels)
-
-            # Debugging size
-            # print(f"Validation Step - Batch {batch_idx}:")
-            # print(f"Predictions shape: {preds.shape}, Labels shape: {labels.shape}")
 
             # Compute CTC loss
             try:
@@ -226,14 +231,20 @@ class SpeechRecognition(pl.LightningModule):
 
     def configure_optimizers(self):
         ### Adam Optimizer
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
-        # optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate, weight_decay=1e-4)
+        # optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate, weight_decay=1e-4)
     
 
 
         ### learning rate scheduler
         # schedule on plateau (old values factor=0.1, patience=5)
-        scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=1)
+        scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=5)
+        # scheduler = get_scheduler(
+        #     "linear",
+        #     optimizer=optimizer,
+        #     num_warmup_steps=WARMUP_STEPS,
+        #     num_training_steps=MAX_STEPS,
+        # )
         '''
         ### schedule on scheduler CyclicLR (Batch size of 4 compared with dataset around 2.500 results in 625 iterations)
         # good for escaping local minima (periodically increasing learning rate)
@@ -255,6 +266,12 @@ class SpeechRecognition(pl.LightningModule):
     '''    
         return {
             'optimizer': optimizer,
-            'lr_scheduler': scheduler,
-            'monitor': 'val_loss'        # monitor is needed with schedulers, means that it will reduce the learning rate based on the validation loss not the training loss 
+            'lr_scheduler': {
+                "scheduler": scheduler,
+                "interval": "epoch",
+                "frequency": 1,
+                "strict": True,
+                "monitor": "val_loss",
+                "name": "ReduceLROnPlateau",
+            },
         }

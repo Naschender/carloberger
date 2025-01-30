@@ -1,5 +1,33 @@
-# scripts/wav2vec/dataset.py
-# author: Carlo Berger
+"""
+===============================================================================
+    Project:        JarvisAI Bachelorthesis
+    File:           dataset.py
+    Description:    This script contains the wav2vec2-model 2.0
+                    custom Dataset class for both implemented datasets (CommonVoice and Minds14)
+                    and contains the Model checkpoint and model save class 
+                    from huggingface template
+    Author:         Carlo Berger, Aalen University
+    Email:          Carlo.Berger@studmail.htw-aalen.de
+    Created:        2024-11-15
+    Last Modified:  2025-01-30
+    Version:        2.0
+===============================================================================
+
+    Copyright (c) 2025 Carlo Berger
+
+    This software is provided "as is", without warranty of any kind, express
+    or implied, including but not limited to the warranties of merchantability,
+    fitness for a particular purpose, and non-infringement. In no event shall
+    the authors or copyright holders be liable for any claim, damages, or other
+    liability, whether in an action of contract, tort, or otherwise, arising
+    from, out of, or in connection with the software or the use or other dealings
+    in the software.
+
+    All code is licenced under the opensource License. You may not use this file except
+    in compliance with the License.
+
+===============================================================================
+"""
 
 # imports dataset.py
 import os
@@ -81,6 +109,8 @@ class SpeechDataset(Dataset):
         return self.num_samples_per_epoch
 
 '''
+
+
 class SpeechDataset(Dataset):
     def __init__(self, audio_dir, transcription_file):
         self.audio_files = [
@@ -140,28 +170,36 @@ class DataCollatorCTCWithPadding:
         # Pad input features using the processor
         batch = self.processor.pad(input_features, padding=self.padding, return_tensors="pt")
 
+        labels_batch = self.processor.pad(
+            labels=label_features,
+            padding=self.padding,
+            return_tensors="pt",
+        )
+
+        labels = labels_batch["input_ids"].masked_fill(labels_batch.attention_mask.ne(1), -100)
+        batch["labels"] = labels
+
+
         # Manually pad the labels
-        labels = [feature["input_ids"] for feature in label_features]
-        max_label_length = max(len(label) for label in labels)
+        # labels = [feature["input_ids"] for feature in label_features]
+        # max_label_length = max(len(label) for label in labels)
 
-        padded_labels = []
-        for label in labels:
-            padded_label = label + [-100] * (max_label_length - len(label))
-            padded_labels.append(padded_label)
+        # padded_labels = []
+        # for label in labels:
+        #     padded_label = label + [-100] * (max_label_length - len(label))
+        #     padded_labels.append(padded_label)
 
-        batch["labels"] = torch.tensor(padded_labels, dtype=torch.long)
+        # batch["labels"] = torch.tensor(padded_labels, dtype=torch.long)
 
-        # Add attention_mask if it exists, otherwise create a default mask
-        if "attention_mask" not in batch:
-            batch["attention_mask"] = torch.ones(batch["input_values"].shape, dtype=torch.long)
+        # # Add attention_mask if it exists, otherwise create a default mask
+        # if "attention_mask" not in batch:
+        #     batch["attention_mask"] = torch.ones(batch["input_values"].shape, dtype=torch.long)
 
         # Debug prints
         # print(features)  # Print out features to check its structure
         # print(features[0])  # Print the first feature to see its structure
 
         return batch
-
-
 
 class HuggingFaceSaveCallback(ModelCheckpoint):
     def on_save_checkpoint(self, trainer, pl_module, checkpoint):

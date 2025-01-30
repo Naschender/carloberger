@@ -1,4 +1,32 @@
-# scripts/feature_extraction.py
+"""
+===============================================================================
+    Project:        JarvisAI Bachelorthesis
+    File:           feature_extraction.py
+    Description:    This script contains the for the Mel-Spectrogram-model 
+                    necessary feature extraction of the prepared audio files
+    Author:         Carlo Berger, Aalen University
+    Email:          Carlo.Berger@studmail.htw-aalen.de
+    Created:        2024-10-30
+    Last Modified:  2025-01-30
+    Version:        2.0
+===============================================================================
+
+    Copyright (c) 2025 Carlo Berger
+
+    This software is provided "as is", without warranty of any kind, express
+    or implied, including but not limited to the warranties of merchantability,
+    fitness for a particular purpose, and non-infringement. In no event shall
+    the authors or copyright holders be liable for any claim, damages, or other
+    liability, whether in an action of contract, tort, or otherwise, arising
+    from, out of, or in connection with the software or the use or other dealings
+    in the software.
+
+    All code is licenced under the opensource License. You may not use this file except
+    in compliance with the License.
+
+===============================================================================
+"""
+
 
 import os
 import random
@@ -28,9 +56,9 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 '''
-# Funktion zur Normalisierung eines Tensors
-# vorschlag von gpt um hohen loss zu verbessern
-# weiter ergänzt so das std nicht null sein kann um fehler zu vermeiden
+# Function to normalize a Tensor
+# divide through zero debug
+# was not necessary for training at the end
 def normalize(tensor):
     mean = tensor.mean()
     std = tensor.std()
@@ -70,37 +98,33 @@ def plot_fbank(fbank, title=None):
     axs.set_xlabel("mel bin")
 
 
-# Verzeichnis der verarbeiteten Audiodaten Entwicklungsdaten
+# Directory of preprocessed Audio data before feature extraction
 # PROCESSED_DATA_DIR = '../outputs/processed_audio/'
 # FEATURE_OUTPUT_DIR = '../outputs/features/'
 # VALIDATION_OUTPUT_DIR = '../outputs/features_val'
 
-# Verzeichnis der verarbeiteten Audiodaten Entwicklungsdaten
+# Directory of preprocessed Audio data after feature extraction
 PROCESSED_DATA_DIR = '../outputs/test_audio/'
 FEATURE_OUTPUT_DIR = '../outputs/features_test/'
 VALIDATION_OUTPUT_DIR = '../outputs/features_test_val'
 
-# Sicherstellen, dass das Ausgabe-Verzeichnis existiert
+# Define / create working dir
 os.makedirs(FEATURE_OUTPUT_DIR, exist_ok=True)
 os.makedirs(VALIDATION_OUTPUT_DIR, exist_ok=True)
 
-# Suche nach allen WAV-Dateien
+# Scan for all .wav files in defined directorys
 audio_files = find_files(PROCESSED_DATA_DIR, '.wav')
 
-# Extrahiere Features aus jeder Audiodatei
+# Extract features from preprocessed audio data
 for audio_file in audio_files:
-    # Lade die Audiodatei
+    # Load audio data from directory
     SPEECH_WAVEFORM, SAMPLE_RATE = torchaudio.load(audio_file)
-    
-    # Define transform
-    # spectrogram = T.Spectrogram(n_fft=512)  
-    # features = torchaudio.compliance.kaldi.fbank(SPEECH_WAVEFORM, n_fft=512, num_mel_bins=80, snip_edges=False)
     
     mel_spectrogram = torchaudio.transforms.MelSpectrogram(
         n_fft=512,    # Anzahl der FFT-Punkte (sollte hoch genug sein)
         hop_length=160,  # Schrittweite (in Samples) zwischen den Fenstern
         f_min=0,
-        f_max=8000,
+        f_max=8000, 
         n_mels=80  # Anzahl der Mel-Bänder (reduziert, um Warnungen zu vermeiden)
     )
 
@@ -109,13 +133,12 @@ for audio_file in audio_files:
     # mel_spectrogram = normalize(mel_spectrogram)
 
     # Perform transform
-    # spec = spectrogram(SPEECH_WAVEFORM)
     spec = mel_spectrogram(SPEECH_WAVEFORM)
 
-    # Speicherpfad für die Features
+    # prepare save of the features into directory
     feature_file_path = os.path.join(FEATURE_OUTPUT_DIR, os.path.basename(audio_file).replace('.wav', '.pt'))
     
-    # Speichere die Features als Torch-Tensor
+    # Save the features into directory
     torch.save(spec, feature_file_path)
 
     # Plot and save the spectrogram as a PNG file
@@ -124,10 +147,10 @@ for audio_file in audio_files:
     plot_spectrogram(spec[0], title="Spectrogram", ax=axs[1])
     fig.tight_layout()
 
-    # Speicherpfad für die PNG-Datei
+    # Prepare save for .png files into Directory
     png_file_path = os.path.join(VALIDATION_OUTPUT_DIR, os.path.basename(audio_file).replace('.wav', '_spectrogram.png'))
     
-    # Save the plot as a PNG file
+    # Save the plot as a PNG file into directory
     fig.savefig(png_file_path)
     plt.close(fig)  # Close the figure after saving to free up memory
 

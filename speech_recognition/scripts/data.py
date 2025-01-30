@@ -1,3 +1,33 @@
+"""
+===============================================================================
+    Project:        JarvisAI Bachelorthesis
+    File:           data.py
+    Description:    This script contains the Mel-Spectrogram-model 
+                    custom collate function, vocab function the old 
+                    and the new dataset class
+    Author:         Carlo Berger, Aalen University
+    Email:          Carlo.Berger@studmail.htw-aalen.de
+    Created:        2024-10-30
+    Last Modified:  2025-01-30
+    Version:        2.0
+===============================================================================
+
+    Copyright (c) 2025 Carlo Berger
+
+    This software is provided "as is", without warranty of any kind, express
+    or implied, including but not limited to the warranties of merchantability,
+    fitness for a particular purpose, and non-infringement. In no event shall
+    the authors or copyright holders be liable for any claim, damages, or other
+    liability, whether in an action of contract, tort, or otherwise, arising
+    from, out of, or in connection with the software or the use or other dealings
+    in the software.
+
+    All code is licenced under the opensource License. You may not use this file except
+    in compliance with the License.
+
+===============================================================================
+"""
+
 from torch.utils.data import Dataset
 import os
 import torch
@@ -91,8 +121,8 @@ class SpeechDataset(Dataset):
         self.transcriptions = self.load_transcriptions(transcription_file)
         self.apply_specaugment = apply_specaugment
         self.specaugment = T.SpecAugment(
-            freq_mask_param=30,    # Adjust frequency masking as needed
-            time_mask_param=45,    # Adjust time masking as needed
+            freq_mask_param=30,    # Adjustable parameter
+            time_mask_param=45,    # Adjustable parameter
             n_time_masks=1,        # Number of time masks to apply
             n_freq_masks=1         # Number of frequency masks to apply
         )
@@ -113,7 +143,6 @@ class SpeechDataset(Dataset):
     def __getitem__(self, idx):
         audio_file = self.audio_files[idx]
         SPEECH_WAVEFORM, SAMPLE_RATE = torchaudio.load(audio_file)
-        # https://pytorch.org/audio/main/tutorials/asr_inference_with_cuda_ctc_decoder_tutorial.html
         features = torchaudio.compliance.kaldi.fbank(SPEECH_WAVEFORM, num_mel_bins=80, snip_edges=False)
 
         # Apply SpecAugment only to training samples if apply_specaugment is True

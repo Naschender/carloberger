@@ -1,4 +1,32 @@
-# config.py
+"""
+===============================================================================
+    Project:        JarvisAI Bachelorthesis
+    File:           config.py
+    Description:    This script contains the wav2vec2-model 1.0
+                    custom encode and decode funtion 
+                    and stores hyperparameters and processor definition
+    Author:         Carlo Berger, Aalen University
+    Email:          Carlo.Berger@studmail.htw-aalen.de
+    Created:        2024-11-15
+    Last Modified:  2025-01-30
+    Version:        2.0
+===============================================================================
+
+    Copyright (c) 2025 Carlo Berger
+
+    This software is provided "as is", without warranty of any kind, express
+    or implied, including but not limited to the warranties of merchantability,
+    fitness for a particular purpose, and non-infringement. In no event shall
+    the authors or copyright holders be liable for any claim, damages, or other
+    liability, whether in an action of contract, tort, or otherwise, arising
+    from, out of, or in connection with the software or the use or other dealings
+    in the software.
+
+    All code is licenced under the opensource License. You may not use this file except
+    in compliance with the License.
+
+===============================================================================
+"""
 from transformers import Wav2Vec2Processor, Wav2Vec2CTCTokenizer, AutoTokenizer
 import torch
 
@@ -7,12 +35,12 @@ import torch
 MODEL_ID = "facebook/wav2vec2-base-960h"
 OUTPUT_DIR = "bachelorthesisModel"
 BATCH_SIZE = 8
-LEARNING_RATE = 1e-5
-MAX_STEPS = 2000
+LEARNING_RATE = 1e-4
+MAX_STEPS = 30000
 WARMUP_STEPS = 500
-EVAL_STEPS = 1000
-SAVE_STEPS = 1000
-MAX_EPOCHS = 100
+EVAL_STEPS = 500
+SAVE_STEPS = 500
+MAX_EPOCHS = 50
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 # Initialize the processor

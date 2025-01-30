@@ -1,4 +1,31 @@
-# scripts/train_model.py
+"""
+===============================================================================
+    Project:        JarvisAI Bachelorthesis
+    File:           prepare_mp3.py
+    Description:    This script contains the whole training process for 
+                    training the Mel-Spectrogram-model 1.0
+    Author:         Carlo Berger, Aalen University
+    Email:          Carlo.Berger@studmail.htw-aalen.de
+    Created:        2024-11-15
+    Last Modified:  2025-01-30
+    Version:        2.0
+===============================================================================
+
+    Copyright (c) 2025 Carlo Berger
+
+    This software is provided "as is", without warranty of any kind, express
+    or implied, including but not limited to the warranties of merchantability,
+    fitness for a particular purpose, and non-infringement. In no event shall
+    the authors or copyright holders be liable for any claim, damages, or other
+    liability, whether in an action of contract, tort, or otherwise, arising
+    from, out of, or in connection with the software or the use or other dealings
+    in the software.
+
+    All code is licenced under the opensource License. You may not use this file except
+    in compliance with the License.
+
+===============================================================================
+"""
 
 import warnings
 import torch
@@ -18,9 +45,6 @@ from tqdm import tqdm
 from data import SpeechDataset, custom_collate, vocab
 
 import torchaudio
-
-# import a dataset from torchaudio
-# libri_data = torchaudio.datasets.LIBRISPEECH('..', url='dev-clean', folder_in_archive='LibriSpeech', download=False)
 
 # Set the seed for reproducibility
 seed = 42
@@ -45,7 +69,7 @@ torch.backends.cudnn.benchmark = False
 # Define Hyperparameters
 EPOCHS = 200
 BATCH_SIZE = 1
-LEARNING_RATE = 0.001 # Adam learning rate 0,001 
+LEARNING_RATE = 0.001 # Adam optimizer standard learning rate 0,001 
 NUM_CLASSES = len(vocab) # total of 29: 26 Letters + Blank <sp> (Leerzeichen), Apostroph ', End of Sentence
 WEIGHT_DECAY=1e-4
 
@@ -85,14 +109,14 @@ def add_weight_noise(model, stddev):
                 param.add_(noise)
 
 
-# Lade Daten
+# Training data directory and loading with dataset
 feature_dir = '../outputs/processed_audio/'
 transcription_file = '../outputs/processed_audio/transcriptions.txt'
 train_dataset = SpeechDataset(feature_dir, transcription_file, apply_specaugment=True)
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=custom_collate, num_workers=1)
 # train_dataset.__getitem__(0)
 
-# Lade Test Daten
+# Validation data directory and loading with dataset
 # Validation dataset and dataloader
 test_feature_dir = '../outputs/test_audio/'
 test_transcription_file = '../outputs/test_audio/transcriptions.txt'

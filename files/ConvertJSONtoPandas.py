@@ -1,11 +1,12 @@
 """
 ===============================================================================
     Project:        JarvisAI Bachelorthesis
-    File:           client.py
-    Description:    This script contains the API response of the Mel-Spectrogram-model 1.0
+    File:           ConvertJSONtoPandas.py
+    Description:    This script converts the JSON response from OpenWeatherAPI
+                    to pandas for further processing and plotting
     Author:         Carlo Berger, Aalen University
     Email:          Carlo.Berger@studmail.htw-aalen.de
-    Created:        2024-11-15
+    Created:        2024-10-15
     Last Modified:  2025-01-30
     Version:        2.0
 ===============================================================================
@@ -23,22 +24,24 @@
     All code is licenced under the opensource License. You may not use this file except
     in compliance with the License.
 
-    Copyright The Lightning AI team.
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-        http://www.apache.org/licenses/LICENSE-2.0
-    
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  See the License for the specific language governing permissions and
-  limitations under the License.
 ===============================================================================
 """
 
-import requests
+import pandas as pd
 
-response = requests.post("http://127.0.0.1:8000/predict", json={"input": 4.0})
-print(f"Status: {response.status_code}\nResponse:\n {response.text}")
+def convertJSONtoPandas(weather_json):
+    weather_list = weather_json['list']
+    weather_data = {
+        'dt': [entry['dt'] for entry in weather_list],
+        'temp': [entry['main']['temp'] for entry in weather_list],
+        'humidity': [entry['main']['humidity'] for entry in weather_list],
+        'pressure': [entry['main']['pressure'] for entry in weather_list]
+    }
+    
+    # Create a DataFrame
+    df = pd.DataFrame(weather_data)
+    
+    # Convert timestamps to datetime
+    df['dt'] = pd.to_datetime(df['dt'], unit='s')
+    
+    return df
